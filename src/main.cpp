@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     }
     try {
         if (mode == "compress") {
-            auto img = ImageIO::loadImage(input, algo != "dct");
+            auto img = ImageIO::loadImage(input, false);
             auto start = std::chrono::steady_clock::now();
             Compressor::compressImage(algo, img, output, quality);
             auto end = std::chrono::steady_clock::now();

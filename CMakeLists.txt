@@ -3,6 +3,11 @@ project(ImageCompressionTool LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+# MSVC 下开启 /Zc:__cplusplus，让 __cplusplus 宏正确报告 C++ 版本
+if (MSVC)
+    add_compile_options(/Zc:__cplusplus /permissive- /utf-8)
+endif()
 
 find_package(OpenCV REQUIRED)
 # Try Qt6 first, fallback to Qt5
