@@ -1,4 +1,5 @@
 #include "Decompressor.h"
+#include "Compressor.h"
 #include "Huffman.h"
 #include "RLE.h"
 #include "LZW.h"
