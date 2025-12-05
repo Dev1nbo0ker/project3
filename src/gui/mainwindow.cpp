@@ -105,7 +105,7 @@ void MainWindow::onRun() {
     try {
         auto start = std::chrono::steady_clock::now();
         if (compress) {
-            cv::Mat img = ImageIO::loadImage(inputEdit->text().toStdString(), algo != "dct");
+            cv::Mat img = ImageIO::loadImage(inputEdit->text().toStdString(), false);
             Compressor::compressImage(algo, img, outputEdit->text().toStdString(), qualitySpin->value());
             auto end = std::chrono::steady_clock::now();
             auto originalSize = static_cast<uint64_t>(img.total() * img.elemSize());

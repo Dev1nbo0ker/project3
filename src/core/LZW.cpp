@@ -2,6 +2,8 @@
 #include <unordered_map>
 #include <fstream>
 #include <stdexcept>
+#include <sstream>
+#include "BitIO.h"
 
 // Basic LZW with 16-bit codes. 字典大小限制4096，简单易懂。
 std::vector<uint16_t> LZW::encodeChannel(const std::vector<uint8_t> &data) {
@@ -66,11 +68,21 @@ void LZW::compress(const cv::Mat &img, const std::string &outputPath) {
     ofs.put(0); ofs.put(0); ofs.put(0);
     for (const auto &ch : data.channelData) {
         auto codes = encodeChannel(ch);
-        uint32_t count = static_cast<uint32_t>(codes.size());
-        ofs.write(reinterpret_cast<const char*>(&count), sizeof(uint32_t));
+        uint64_t validBits = static_cast<uint64_t>(codes.size()) * 12; // each code is 12 bits
+
+        std::stringstream ss;
+        BitWriter writer(ss);
         for (uint16_t code : codes) {
-            ofs.write(reinterpret_cast<const char*>(&code), sizeof(uint16_t));
+            writer.writeBits(code, 12);
         }
+        writer.flush();
+
+        std::string packed = ss.str();
+        uint32_t byteSize = static_cast<uint32_t>(packed.size());
+
+        ofs.write(reinterpret_cast<const char*>(&validBits), sizeof(uint64_t));
+        ofs.write(reinterpret_cast<const char*>(&byteSize), sizeof(uint32_t));
+        ofs.write(packed.data(), packed.size());
     }
 }
 
@@ -86,11 +98,35 @@ cv::Mat LZW::decompress(const std::string &inputPath) {
     char pad[3]; ifs.read(pad,3);
     data.channelData.resize(data.channels);
     for (auto &ch : data.channelData) {
-        uint32_t count = 0; ifs.read(reinterpret_cast<char*>(&count), sizeof(uint32_t));
-        std::vector<uint16_t> codes(count);
-        for (uint32_t i = 0; i < count; ++i) {
-            ifs.read(reinterpret_cast<char*>(&codes[i]), sizeof(uint16_t));
+        uint64_t validBits = 0; uint32_t byteSize = 0;
+        ifs.read(reinterpret_cast<char*>(&validBits), sizeof(uint64_t));
+        ifs.read(reinterpret_cast<char*>(&byteSize), sizeof(uint32_t));
+
+        if (validBits % 12 != 0) {
+            throw std::runtime_error("Invalid LZW bit-length encoding");
         }
+
+        std::vector<uint8_t> packed(byteSize);
+        ifs.read(reinterpret_cast<char*>(packed.data()), byteSize);
+
+        std::stringstream ss;
+        ss.write(reinterpret_cast<const char*>(packed.data()), packed.size());
+        BitReader reader(ss);
+
+        std::vector<uint16_t> codes;
+        codes.reserve(static_cast<size_t>(validBits / 12));
+        for (uint64_t readBits = 0; readBits < validBits; readBits += 12) {
+            uint16_t code = 0;
+            for (int i = 0; i < 12; ++i) {
+                int bit;
+                if (!reader.readBit(bit)) {
+                    throw std::runtime_error("Unexpected end of LZW code stream");
+                }
+                code = static_cast<uint16_t>((code << 1) | (bit & 1));
+            }
+            codes.push_back(code);
+        }
+
         ch = decodeChannel(codes);
     }
     return ImageIO::toMat(data);
