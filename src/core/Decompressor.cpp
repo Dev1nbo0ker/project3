@@ -6,6 +6,7 @@
 #include "DCTCodec.h"
 #include <stdexcept>
 
+// 解析算法名称，与压缩侧保持一致，确保解压时使用正确的编解码器。
 static Algorithm parseAlgo(const std::string &name) {
     if (name == "huffman") return Algorithm::Huffman;
     if (name == "rle") return Algorithm::RLE;
@@ -16,6 +17,7 @@ static Algorithm parseAlgo(const std::string &name) {
 
 cv::Mat Decompressor::decompressImage(const std::string &algoName, const std::string &inputPath) {
     Algorithm algo = parseAlgo(algoName);
+    // 根据枚举调用对应解码逻辑，保持与压缩入口的对称性。
     switch (algo) {
         case Algorithm::Huffman:
             return Huffman::decompress(inputPath);

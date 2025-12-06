@@ -4,9 +4,11 @@
 
 cv::Mat ImageIO::loadImage(const std::string &path, bool forceColor) {
     cv::Mat img = cv::imread(path, forceColor ? cv::IMREAD_COLOR : cv::IMREAD_UNCHANGED);
+    // 读取失败直接抛出异常，由上层统一处理。
     if (img.empty()) {
         throw std::runtime_error("Failed to read image: " + path);
     }
+    // 统一转为三通道，避免不同输入格式导致的通道错位。
     if (img.channels() == 4) {
         cv::cvtColor(img, img, cv::COLOR_BGRA2BGR);
     }
@@ -17,6 +19,7 @@ cv::Mat ImageIO::loadImage(const std::string &path, bool forceColor) {
 }
 
 void ImageIO::saveImage(const std::string &path, const cv::Mat &img) {
+    // 写盘失败同样抛出异常，保证调用方获知失败原因。
     if (!cv::imwrite(path, img)) {
         throw std::runtime_error("Failed to write image: " + path);
     }
@@ -27,6 +30,7 @@ ImageData ImageIO::fromMat(const cv::Mat &img) {
     data.width = static_cast<uint32_t>(img.cols);
     data.height = static_cast<uint32_t>(img.rows);
     data.channels = static_cast<uint8_t>(img.channels());
+    // 将多通道图像拆分成独立向量，方便逐通道压缩。
     std::vector<cv::Mat> planes;
     if (data.channels == 3) {
         cv::split(img, planes);
@@ -43,6 +47,7 @@ ImageData ImageIO::fromMat(const cv::Mat &img) {
 cv::Mat ImageIO::toMat(const ImageData &data) {
     std::vector<cv::Mat> planes;
     planes.reserve(data.channelData.size());
+    // 将存储的字节数据还原成 OpenCV 矩阵。
     for (const auto &vec : data.channelData) {
         cv::Mat plane(static_cast<int>(data.height), static_cast<int>(data.width), CV_8UC1);
         std::memcpy(plane.data, vec.data(), vec.size());

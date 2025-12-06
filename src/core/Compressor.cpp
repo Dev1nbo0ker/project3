@@ -5,6 +5,7 @@
 #include "DCTCodec.h"
 #include <stdexcept>
 
+// 根据字符串名称解析枚举，便于在 CLI 与内部算法实现间解耦。
 static Algorithm parseAlgo(const std::string &name) {
     if (name == "huffman") return Algorithm::Huffman;
     if (name == "rle") return Algorithm::RLE;
@@ -15,6 +16,7 @@ static Algorithm parseAlgo(const std::string &name) {
 
 void Compressor::compressImage(const std::string &algoName, const cv::Mat &img, const std::string &outputPath, int quality) {
     Algorithm algo = parseAlgo(algoName);
+    // 通过统一的 switch 分发到具体编码器，方便后续扩展新算法。
     switch (algo) {
         case Algorithm::Huffman:
             Huffman::compress(img, outputPath);
